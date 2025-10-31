@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { hashToken } from "@/lib/token";
 import { findByTokenHash, incrementDownload } from "@/lib/store";
 import { createSignedDownloadUrls } from "@/lib/storage";
 
 const TOKEN_PEPPER = process.env.TOKEN_PEPPER || "dev-pepper";
 
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
-  const token = params.token;
+export async function GET(_req: NextRequest, context: { params: Promise<{ token: string }> }) {
+  const { token } = await context.params;
   const tokenHash = hashToken(token, TOKEN_PEPPER);
   const rec = await findByTokenHash(tokenHash);
   if (!rec) return NextResponse.json({ valid: false }, { status: 404 });
@@ -24,8 +24,9 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   });
 }
 
-export async function POST(request: Request, { params }: { params: { token: string } }) {
-  const tokenHash = hashToken(params.token, TOKEN_PEPPER);
+export async function POST(_req: NextRequest, context: { params: Promise<{ token: string }> }) {
+  const { token } = await context.params;
+  const tokenHash = hashToken(token, TOKEN_PEPPER);
   const rec = await findByTokenHash(tokenHash);
   if (!rec) return NextResponse.json({ ok: false }, { status: 404 });
 

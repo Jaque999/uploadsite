@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { CheckCircle2, Copy, Timer } from "lucide-react";
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 
-export default function ConfirmPage() {
+function ConfirmInner() {
   const params = useSearchParams();
   const link = params.get("link");
   const [qr, setQr] = useState<string | null>(null);
@@ -68,6 +68,14 @@ export default function ConfirmPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh w-full flex items-center justify-center">Loading…</div>}>
+      <ConfirmInner />
+    </Suspense>
   );
 }
 
