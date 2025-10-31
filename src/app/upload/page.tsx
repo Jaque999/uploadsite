@@ -47,21 +47,20 @@ export default function UploadPage() {
     });
     const initData = await initRes.json();
 
-    // Simulate upload progress
-    for (const item of items) {
-      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "uploading" } : it)));
-      await new Promise<void>((resolve) => {
-        let p = 0;
-        const t = setInterval(() => {
-          p += 7 + Math.random() * 10;
-          setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, progress: Math.min(100, p) } : it)));
-          if (p >= 100) {
-            clearInterval(t);
-            resolve();
-          }
-        }, 120);
-      });
-      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "done" } : it)));
+    // Upload each file to Supabase using signed URLs
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const presigned = initData.presignedUrls[idx];
+      if (!presigned?.url) continue;
+      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", progress: 0 } : it)));
+      try {
+        const fd = new FormData();
+        fd.append("file", item.file);
+        await fetch(presigned.url, { method: "POST", body: fd });
+        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "done", progress: 100 } : it)));
+      } catch {
+        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: "error" } : it)));
+      }
     }
 
     // finalize upload
@@ -72,7 +71,7 @@ export default function UploadPage() {
         body: JSON.stringify({
           uploadId: initData.uploadId,
           token: initData.token,
-          filesMeta: items.map((i, idx) => ({ name: i.file.name, size: i.file.size, type: i.file.type, storageKey: `uploads/${initData.uploadId}/${idx}-${encodeURIComponent(i.file.name)}`})),
+          filesMeta: items.map((i, idx) => ({ name: i.file.name, size: i.file.size, type: i.file.type, storageKey: initData.presignedUrls[idx]?.storageKey })),
           clientEncrypted: encryptClientSide,
           expiresAt: initData.expiresAt ?? null,
           maxDownloads: null,
